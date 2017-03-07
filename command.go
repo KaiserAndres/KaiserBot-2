@@ -9,18 +9,21 @@ import (
 type Command struct {
 	prefix string
 	regex *regexp.Regexp
+	run func(string, irc.Connection)
 }
 
-type Runnable interface {
-	run(cmd string)
-}
-
-var commands map[string]Command
+var commands map[string]*Command = make(map[string]*Command)
 
 func messageHandler(event *irc.Event) {
 	if strings.HasPrefix(event.Message(), "!") {
 		input := strings.Split(event.Message(), " ")
-		command[strings.Split(input[0]].run(
-			strings.Join(input[1:], " "))
+		cmd := command[input[0]]
+		if cmd != nil {
+			*cmd.run(
+				strings.Join(input[1:], " "),
+				event.Connection)
+		} else {
+			badCommand(input[0], event.Connection)
+		}
 	}
 }
