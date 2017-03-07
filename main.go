@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	_ "github.com/thoj/go-ircevent"
+	"github.com/thoj/go-ircevent"
 	"io"
 	"math/rand"
 	"os"
@@ -23,11 +23,19 @@ func main() {
 		panic(err.Error())
 	}
 
-	for key, val := range settings {
-		fmt.Println(key, val)
+	conn := irc.IRC(settings["BotNick"], settings["BotNick"])
+	err = conn.Connect(settings["Server"])
+	if err != nil {
+		panic(err.Error())
 	}
 
+	conn.AddCallback("PING", ping)
+	conn.AddCallback("PRVMSG", messageHandler)
 	return
+}
+
+func ping(event *irc.Event) {
+	event.Connection.SendRaw("PONG" + event.Message())
 }
 
 func roll(size, times int) int {
