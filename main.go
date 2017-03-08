@@ -2,17 +2,18 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/thoj/go-ircevent"
 	"io"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+	"sync"
 )
 
 var (
 	badConfig error = errors.New("Bad config file.")
+	sendMutex *sync.Mutex = &sync.Mutex{}
 )
 
 func main() {
@@ -24,18 +25,31 @@ func main() {
 	}
 
 	conn := irc.IRC(settings["BotNick"], settings["BotNick"])
+
+	conn.VerboseCallbackHandler = false
+	conn.Debug = false
+	conn.UseTLS = false
+
+	conn.AddCallback("PING", ping)
+	conn.AddCallback("PRIVMSG", func (event *irc.Event) {
+		go messageHandler(event)})
+	conn.AddCallback("001", func(e *irc.Event) {
+		for _, room := range strings.Split(settings["Channels"], ",") {
+			e.Connection.Join(room)
+			send(room, "This is a testing bot, please ignore", e)
+		}
+	})
+
+	setCommands()
 	err = conn.Connect(settings["Server"])
 	if err != nil {
 		panic(err.Error())
 	}
-
-	conn.AddCallback("PING", ping)
-	conn.AddCallback("PRVMSG", messageHandler)
-	return
+	conn.Loop()
 }
 
 func ping(event *irc.Event) {
-	event.Connection.SendRaw("PONG" + event.Message())
+	event.Connection.SendRaw("PONG " + event.Message())
 }
 
 func roll(size, times int) int {
@@ -44,6 +58,12 @@ func roll(size, times int) int {
 		res += rand.Int() % size
 	}
 	return res
+}
+
+func send(room, message string, e *irc.Event) {
+	sendMutex.Lock()
+	e.Connection.Privmsg(room, message)
+	sendMutex.Unlock()
 }
 
 func loadSettings() (map[string]string, error) {
@@ -73,8 +93,14 @@ func loadSettings() (map[string]string, error) {
 		buffer = make([]byte, 64)
 	}
 
-	for _, line := range strings.Split(data, "\n") {
+	conf := strings.Split(data, "\n")
+
+	for n, line := range conf {
 		subs := strings.Split(line, "|")
+		if n == len(conf)-1 {
+			continue
+		}
+
 		if len(subs) != 2 {
 			return nil, badConfig
 		}

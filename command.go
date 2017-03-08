@@ -2,28 +2,52 @@ package main
 
 import (
 	"github.com/thoj/go-ircevent"
-	"errors"
+	_ "errors"
+	"fmt"
 	"regexp"
+	"strings"
 )
 
-type Command struct {
-	prefix string
-	regex *regexp.Regexp
-	run func(string, irc.Connection)
+type Command interface {
+	validate(string) []string
+	run([]string, *irc.Event)
 }
 
-var commands map[string]*Command = make(map[string]*Command)
+type rollCmd struct {
+	regex *regexp.Regexp
+}
+
+func (r rollCmd) validate(s string) []string{
+	return r.regex.FindAllString(s, -1)
+}
+
+func (r rollCmd) run(s []string, e *irc.Event) {
+	//do rolling stuff
+	return
+}
+
+var commands map[string]Command = make(map[string]Command)
+
+func setCommands() {
+	commands["!roll"] = rollCmd{regexp.MustCompile(
+		"(\\d+#)?(\\d+d\\d+)((\\+|-)\\d)?")}
+}
+
+func badCommand(s string, e *irc.Event) {
+	text := "Sorry but '"+s+"' isn't a valid command :("
+	send(e.Arguments[0], text, e)
+}
 
 func messageHandler(event *irc.Event) {
+	fmt.Println(event.Message())
 	if strings.HasPrefix(event.Message(), "!") {
 		input := strings.Split(event.Message(), " ")
-		cmd := command[input[0]]
+		cmd := commands[input[0]]
+		body := strings.Join(input[1:], " ")
 		if cmd != nil {
-			*cmd.run(
-				strings.Join(input[1:], " "),
-				event.Connection)
+			cmd.run(cmd.validate(body), event)
 		} else {
-			badCommand(input[0], event.Connection)
+			badCommand(input[0], event)
 		}
 	}
 }
