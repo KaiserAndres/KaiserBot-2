@@ -7,12 +7,12 @@ import (
 	"math/rand"
 	"os"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 var (
-	badConfig error = errors.New("Bad config file.")
+	badConfig error       = errors.New("Bad config file.")
 	sendMutex *sync.Mutex = &sync.Mutex{}
 )
 
@@ -31,8 +31,9 @@ func main() {
 	conn.UseTLS = false
 
 	conn.AddCallback("PING", ping)
-	conn.AddCallback("PRIVMSG", func (event *irc.Event) {
-		go messageHandler(event)})
+	conn.AddCallback("PRIVMSG", func(event *irc.Event) {
+		go messageHandler(event)
+	})
 	conn.AddCallback("001", func(e *irc.Event) {
 		for _, room := range strings.Split(settings["Channels"], ",") {
 			e.Connection.Join(room)
