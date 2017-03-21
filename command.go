@@ -31,20 +31,26 @@ type logCmd string
 func (l logCmd) Validate(s string) []string {
 	roomList := make([]string, 2, 2)
 	names := strings.Split(s, " ")[1:]
-	if len(names) < 2 return []string{}
-	else roomsList[0], roomList[1] = names[0], names[1]
+	if len(names) < 2 {
+		return []string{}
+	} else {
+		roomList[0] = names[0]
+		roomList[1] = names[1]
+	}
 
-	if roomList[0][0] == '#' return roomlist
-	else return []string{}
+	if roomList[0][0] == '#' {
+		return roomList
+	} else {
+		return []string{}
+	}
 }
 
 func (l logCmd) Run(s []string, e *irc.Event) {
 	room, ses := s[0], s[1]
-	if !inLogPile(room) {
-		addRoom(room, ses)
-	}
-	else {
-		terminate(room)
+	if !InLogPile(room) {
+		AddRoom(room, ses)
+	} else {
+		Terminate(room)
 	}
 }
 
